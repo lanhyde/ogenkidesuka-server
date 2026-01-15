@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: ogenkidesuka-db
+    environment:
+      POSTGRES_USER: ogenkiuser
+      POSTGRES_PASSWORD: ogenkipass123
+      POSTGRES_DB: ogenkidesuka
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ogenkiuser -d ogenkidesuka"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Go API Server (optional - can run locally too)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ogenkidesuka-api
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ogenkiuser
+      DB_PASSWORD: ogenkipass123
+      DB_NAME: ogenkidesuka
+      DB_SSL_MODE: disable
+      JWT_SECRET: dev-secret-change-in-production
+      CORS_ALLOWED_ORIGINS: "*"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
